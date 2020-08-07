@@ -147,7 +147,7 @@ def main():
     base.print_error('[config]: no targets found in config file')
     exit(-1)
     
-  scan('en1')
+  scan(interface)
   
 if __name__ == '__main__':
   main()
