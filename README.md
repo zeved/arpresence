@@ -13,6 +13,7 @@ c0:ff:ee:ad:d1:c4,coffee addict
 
 ## TODO
 
+- implement the looping system that will continuously scan for the targets
 - send data to MQTT broker when target is found on the network
 - accept MQTT broker commands to add / remove targets?
 - send last seen timestamp?
