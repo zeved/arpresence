@@ -30,7 +30,7 @@ from prettytable import PrettyTable
 
 base = Base(admin_only = True, available_platforms = ['Linux', 'Darwin'])
 
-interface = ''
+target_interface = ''
 mqtt_ip = ''
 mqtt_port = 1884
 mqtt_user = ''
@@ -38,13 +38,13 @@ mqtt_pass = ''
 targets = []
 
 def read_config():
-  global mqtt_ip, mqtt_port, mqtt_user, mqtt_pass, targets, interface
+  global mqtt_ip, mqtt_port, mqtt_user, mqtt_pass, targets, target_interface
   try:
     config_file = open('config', 'r')
     config_lines = config_file.readlines()
     assert len(config_lines) != 0, 'config file is empty?'
     
-    interface = config_lines[0]
+    target_interface = config_lines[0].rstrip()
     mqtt_ip = config_lines[1].split(',')[0]
     mqtt_port = int(config_lines[1].split(',')[1])
     mqtt_user = config_lines[2].split(',')[0]
@@ -147,7 +147,7 @@ def main():
     base.print_error('[config]: no targets found in config file')
     exit(-1)
     
-  scan(interface)
+  scan(target_interface)
   
 if __name__ == '__main__':
   main()
