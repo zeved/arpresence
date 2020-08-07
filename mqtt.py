@@ -19,3 +19,32 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
+import paho.mqtt.client as mqtt
+
+class MQTTClient:
+  def __init__(self, broker_ip, broker_port, user, password):
+    self.broker_ip = broker_ip
+    self.broker_port = broker_port
+    self.user = user
+    self.password = password
+    self.client = mqtt.Client()
+    
+  def on_connect(self, client, data, flags, code):
+    print('[mqtt]: connected')
+  
+  def on_message(self, data, message):
+    print(f'[mqtt]: topic %s -> %s' % (message.topic, message.payload))
+    
+  def on_disconnect(self):
+    print('[mqtt]: disconnected')
+    self.client.connect(self.broker_ip, self.broker_port)
+    
+  def send(self, message):
+    # add sending
+    
+  def connect(self):
+    self.client.on_connect = self.on_connect
+    self.client.on_message = self.on_message
+    self.client.on_disconnect = self.on_disconnect
+    self.client.connect(self.broker_ip, self.broker_port)
+    self.client.loop_forever()

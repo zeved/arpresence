@@ -28,6 +28,8 @@ from raw_packet.Scanners.arp_scanner import ArpScan
 from typing import List, Dict, Union
 from prettytable import PrettyTable
 
+from mqtt import MQTTClient
+
 base = Base(admin_only = True, available_platforms = ['Linux', 'Darwin'])
 
 target_interface = ''
@@ -148,6 +150,9 @@ def main():
     exit(-1)
     
   scan(target_interface)
+  
+  # mqtt = MQTTClient(mqtt_ip, mqtt_port, '', '')
+  # mqtt.connect()
   
 if __name__ == '__main__':
   main()

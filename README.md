@@ -14,3 +14,5 @@ c0:ff:ee:ad:d1:c4,coffee addict
 ## TODO
 
 - send data to MQTT broker when target is found on the network
+- accept MQTT broker commands to add / remove targets?
+- send last seen timestamp?
