@@ -29,6 +29,8 @@ from typing import List, Dict, Union
 from prettytable import PrettyTable
 
 base = Base(admin_only = True, available_platforms = ['Linux', 'Darwin'])
+
+interface = ''
 mqtt_ip = ''
 mqtt_port = 1884
 mqtt_user = ''
@@ -36,17 +38,18 @@ mqtt_pass = ''
 targets = []
 
 def read_config():
-  global mqtt_ip, mqtt_port, mqtt_user, mqtt_pass, targets
+  global mqtt_ip, mqtt_port, mqtt_user, mqtt_pass, targets, interface
   try:
     config_file = open('config', 'r')
     config_lines = config_file.readlines()
     assert len(config_lines) != 0, 'config file is empty?'
     
-    mqtt_ip = config_lines[0].split(',')[0]
-    mqtt_port = int(config_lines[0].split(',')[1])
-    mqtt_user = config_lines[1].split(',')[0]
-    mqtt_user = config_lines[1].split(',')[1]
-    targets = config_lines[2:]
+    interface = config_lines[0]
+    mqtt_ip = config_lines[1].split(',')[0]
+    mqtt_port = int(config_lines[1].split(',')[1])
+    mqtt_user = config_lines[2].split(',')[0]
+    mqtt_user = config_lines[2].split(',')[1]
+    targets = config_lines[3:]
     
     base.print_info(f'[config]: will connect to MQTT broker %s:%d' % (mqtt_ip, mqtt_port))
     
@@ -115,7 +118,7 @@ def scan(
         found_target = \
           {
             'mac': result['mac-address'],
-            'name': [target for target in targets if target['mac'] == result['mac-address']][0]['name'],
+            'name': found_target[0]['name'],
             'ip': result['ip-address'],
             'vendor': result['vendor'],
           }
