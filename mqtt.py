@@ -20,31 +20,46 @@
 #  SOFTWARE.
 
 import paho.mqtt.client as mqtt
+import json
 
 class MQTTClient:
-  def __init__(self, broker_ip, broker_port, user, password):
-    self.broker_ip = broker_ip
-    self.broker_port = broker_port
-    self.user = user
-    self.password = password
-    self.client = mqtt.Client()
+  def __init__(self, config, base):
+    self.broker_ip = config['mqtt']['ip']
+    self.broker_port = config['mqtt']['port']
+    self.user = config['mqtt']['username']
+    self.password = config['mqtt']['password']
+    self.topic = config['mqtt']['topic']
+    self.client = mqtt.Client(client_id = config['mqtt']['client_id'])
+    self.base = base
     
   def on_connect(self, client, data, flags, code):
-    print('[mqtt]: connected')
+    self.base.print_info('[mqtt]: connected')
+    self.client.subscribe(self.topic)
+    hello_msg = {'msg': 'hello'}
+    self.client.publish(self.topic, json.dumps(hello_msg))
   
   def on_message(self, data, message):
-    print(f'[mqtt]: topic %s -> %s' % (message.topic, message.payload))
+    self.base.print_info(f'[mqtt]: topic %s -> %s' % (message.topic, message.payload))
     
   def on_disconnect(self):
-    print('[mqtt]: disconnected')
-    self.client.connect(self.broker_ip, self.broker_port)
+    self.base.print_error('[mqtt]: disconnected')
+    self.client.reconnect()
+    
     
   def send(self, message):
-    # add sending
+    try:
+      self.base.print_info(f'[mqtt]: sending presence data: %s' % message)
+      self.client.publish(self.topic, message)
+    except Exception as e:
+      self.base.print_error(f'[mqtt]: publish error %s' % e)
     
   def connect(self):
-    self.client.on_connect = self.on_connect
-    self.client.on_message = self.on_message
-    self.client.on_disconnect = self.on_disconnect
-    self.client.connect(self.broker_ip, self.broker_port)
-    self.client.loop_forever()
+    try:
+      self.client.on_connect = self.on_connect
+      self.client.on_message = self.on_message
+      self.client.on_disconnect = self.on_disconnect
+      self.client.username_pw_set(self.user, self.password)
+      self.client.connect(self.broker_ip, self.broker_port)
+      self.client.loop()
+    except Exception as e:
+      self.base.print_error(f'[mqtt]: exception %s' % e)
