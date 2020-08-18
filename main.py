@@ -23,45 +23,40 @@ import sys
 import os
 
 from raw_packet.Utils.base import Base
-from raw_packet.Utils.utils import Utils
 from raw_packet.Scanners.arp_scanner import ArpScan
 from typing import List, Dict, Union
 from prettytable import PrettyTable
+from datetime import datetime
+import json
 
 from mqtt import MQTTClient
 
 base = Base(admin_only = True, available_platforms = ['Linux', 'Darwin'])
 
-target_interface = ''
-mqtt_ip = ''
-mqtt_port = 1884
-mqtt_user = ''
-mqtt_pass = ''
-targets = []
+config = {}
 
 def read_config():
-  global mqtt_ip, mqtt_port, mqtt_user, mqtt_pass, targets, target_interface
+  global config
   try:
-    config_file = open('config', 'r')
-    config_lines = config_file.readlines()
-    assert len(config_lines) != 0, 'config file is empty?'
+    config_file = open('config.json', 'r')
+    config = json.load(config_file)
     
-    target_interface = config_lines[0].rstrip()
-    mqtt_ip = config_lines[1].split(',')[0]
-    mqtt_port = int(config_lines[1].split(',')[1])
-    mqtt_user = config_lines[2].split(',')[0]
-    mqtt_user = config_lines[2].split(',')[1]
-    targets = config_lines[3:]
+    base.print_info(
+      f'[config]: will connect to MQTT broker %s:%d and will report on topic "%s"' %
+      (
+        config['mqtt']['ip'],
+        config['mqtt']['port'],
+        config['mqtt']['topic']
+      )
+    )
     
-    base.print_info(f'[config]: will connect to MQTT broker %s:%d' % (mqtt_ip, mqtt_port))
-    
-    if (len(targets) > 0):
+    if (len(config['targets']) > 0):
       base.print_info('[targets]: ')
       
-      for target in targets:
-        print(f'\tMAC: %s -> %s' % (target.split(',')[0], target.split(',')[1]))
+      for target in config['targets']:
+        print(f'\tMAC: %s -> %s' % (target['mac'], target['identifier']))
       
-    return len(targets)
+    return len(config['targets'])
     
   except Exception as e:
     base.print_error(f'[read_targets]: exception -> %s' % e)
@@ -71,14 +66,18 @@ def scan(
   interface: Union[None, str] = None,
   target_ip: Union[None, str] = None,
   timeout: int = 5,
-  retry: int = 5
+  retry: int = 5,
+  mqtt_client = None,
 ):
-  global targets
+  global config
   base.print_info('ARPresence')
   
   try:
     net_interface: str = \
-      base.network_interface_selection(interface_name = interface, message = 'Please select a network interface')
+      base.network_interface_selection(
+        interface_name = interface,
+        message = 'Please select a network interface'
+      )
     net_interface_settings: Dict[str, Union[None, str, List[str]]] = \
       base.get_interface_settings(interface_name = net_interface, required_parameters = [
         'mac-address',
@@ -98,7 +97,7 @@ def scan(
       target_ip_address = None,
       check_vendor = True,
       exclude_ip_addresses = net_interface_settings['ipv4-address'],
-      exit_on_failure = False,
+      exit_on_failure = True,
       show_scan_percentage = True,
     )
     
@@ -111,7 +110,15 @@ def scan(
       base.cINFO + 'name' + base.cEND,
     ])
     
-    targets = list(map(lambda target: { 'mac': target.split(',')[0], 'name': target.split(',')[1]}, targets))
+    targets = list(
+      map(
+        lambda target: {
+          'mac': target['mac'],
+          'name': target['identifier']
+        },
+      config['targets'])
+    )
+    
     found_targets = []
     
     for result in results:
@@ -136,23 +143,37 @@ def scan(
         )
     
     if (len(found_targets) > 0):
-      base.print_info('targets found: ')
+      base.print_info('[scan]: targets found: ')
       print(pretty_table)
+      if (mqtt_client is not None):
+        base.print_info('[scan]: sending presence data to MQTT broker...')
+        for target in found_targets:
+          payload = {
+            'name': target['name'],
+            'ip': target['ip'],
+            'mac': target['mac'],
+            'vendor': target['vendor'],
+            'last_seen': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+          }
+          mqtt_client.client.loop()
+          mqtt_client.send(json.dumps(payload))
+      else:
+        base.print_warning('[scan]: no MQTT client passed; won\'t send anything')
     else:
-      base.print_warning('no targets were found')
+      base.print_warning('[scan]: no targets were found')
     
   except Exception as e:
     base.print_error(f'[scan]: exception -> %s' % e)
 
 def main():
   if (read_config() < 1):
-    base.print_error('[config]: no targets found in config file')
+    base.print_error('[config.json]: no targets found in config.json file')
     exit(-1)
-    
-  scan(target_interface)
+
+  mqtt = MQTTClient(config, base)
+  mqtt.connect()
   
-  # mqtt = MQTTClient(mqtt_ip, mqtt_port, '', '')
-  # mqtt.connect()
+  scan(config['interface'], mqtt_client = mqtt)
   
 if __name__ == '__main__':
   main()
