@@ -7,6 +7,8 @@ Scans the interface for the specified MAC addresses and reports if they were fou
 ```json
 {
   "interface": "en0",
+  "mode": "targets" / "all",
+  'interval": 10,
   "mqtt": {
     "ip": "192.168.22.100",
     "port": 64888,
@@ -30,3 +32,5 @@ Scans the interface for the specified MAC addresses and reports if they were fou
 - accept MQTT broker commands to add / remove targets?
 - ~~send last seen timestamp?~~ DONE
 - add possibility to POST data to a HTTP listener
+- add looping system and interval
+- add scanning mode all / targets

@@ -19,17 +19,12 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-import sys
-import os
-
 from raw_packet.Utils.base import Base
-from raw_packet.Scanners.arp_scanner import ArpScan
-from typing import List, Dict, Union
-from prettytable import PrettyTable
-from datetime import datetime
 import json
+import time
 
 from mqtt import MQTTClient
+from scanner import Scanner
 
 base = Base(admin_only = True, available_platforms = ['Linux', 'Darwin'])
 
@@ -62,109 +57,6 @@ def read_config():
     base.print_error(f'[read_targets]: exception -> %s' % e)
     return 0
 
-def scan(
-  interface: Union[None, str] = None,
-  target_ip: Union[None, str] = None,
-  timeout: int = 5,
-  retry: int = 5,
-  mqtt_client = None,
-):
-  global config
-  base.print_info('ARPresence')
-  
-  try:
-    net_interface: str = \
-      base.network_interface_selection(
-        interface_name = interface,
-        message = 'Please select a network interface'
-      )
-    net_interface_settings: Dict[str, Union[None, str, List[str]]] = \
-      base.get_interface_settings(interface_name = net_interface, required_parameters = [
-        'mac-address',
-        'ipv4-address',
-        'first-ipv4-address',
-        'last-ipv4-address',
-      ])
-    
-    base.print_info(f'[scan]: interface -> %s' % net_interface_settings['network-interface'])
-    base.print_info(f'[scan]: this IP -> %s' % net_interface_settings['ipv4-address'])
-    base.print_info(f'[scan]: this MAC -> %s' % net_interface_settings['mac-address'])
-    
-    arp_scanner: ArpScan = ArpScan(network_interface = net_interface)
-    results: List[Dict[str, str]] = arp_scanner.scan(
-      timeout = timeout,
-      retry = retry,
-      target_ip_address = None,
-      check_vendor = True,
-      exclude_ip_addresses = net_interface_settings['ipv4-address'],
-      exit_on_failure = True,
-      show_scan_percentage = True,
-    )
-    
-    assert len(results) != 0, 'no devices found'
-    
-    pretty_table = PrettyTable([
-      base.cINFO + 'IP' + base.cEND,
-      base.cINFO + 'MAC' + base.cEND,
-      base.cINFO + 'vendor' + base.cEND,
-      base.cINFO + 'name' + base.cEND,
-    ])
-    
-    targets = list(
-      map(
-        lambda target: {
-          'mac': target['mac'],
-          'name': target['identifier']
-        },
-      config['targets'])
-    )
-    
-    found_targets = []
-    
-    for result in results:
-      found_target = [target for target in targets if target['mac'] == result['mac-address']]
-      if (len(found_target) > 0):
-        found_target = \
-          {
-            'mac': result['mac-address'],
-            'name': found_target[0]['name'],
-            'ip': result['ip-address'],
-            'vendor': result['vendor'],
-          }
-        found_targets.append(found_target)
-        
-        pretty_table.add_row(
-          [
-            found_target['ip'],
-            found_target['mac'],
-            found_target['vendor'],
-            found_target['name']
-          ]
-        )
-    
-    if (len(found_targets) > 0):
-      base.print_info('[scan]: targets found: ')
-      print(pretty_table)
-      if (mqtt_client is not None):
-        base.print_info('[scan]: sending presence data to MQTT broker...')
-        for target in found_targets:
-          payload = {
-            'name': target['name'],
-            'ip': target['ip'],
-            'mac': target['mac'],
-            'vendor': target['vendor'],
-            'last_seen': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-          }
-          mqtt_client.client.loop()
-          mqtt_client.send(json.dumps(payload))
-      else:
-        base.print_warning('[scan]: no MQTT client passed; won\'t send anything')
-    else:
-      base.print_warning('[scan]: no targets were found')
-    
-  except Exception as e:
-    base.print_error(f'[scan]: exception -> %s' % e)
-
 def main():
   if (read_config() < 1):
     base.print_error('[config.json]: no targets found in config.json file')
@@ -172,8 +64,11 @@ def main():
 
   mqtt = MQTTClient(config, base)
   mqtt.connect()
+  scanner = Scanner(config, base)
   
-  scan(config['interface'], mqtt_client = mqtt)
+  while (True):
+    scanner.scan(config['interface'], mqtt_client = mqtt)
+    time.sleep(config['interval'])
   
 if __name__ == '__main__':
   main()
