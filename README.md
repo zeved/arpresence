@@ -32,5 +32,5 @@ Scans the interface for the specified MAC addresses and reports if they were fou
 - accept MQTT broker commands to add / remove targets?
 - ~~send last seen timestamp?~~ DONE
 - add possibility to POST data to a HTTP listener
-- add looping system and interval
-- add scanning mode all / targets
+- ~~add looping system and interval~~
+- ~~add scanning mode all / targets~~
