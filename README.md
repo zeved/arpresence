@@ -8,7 +8,7 @@ Scans the interface for the specified MAC addresses and reports if they were fou
 {
   "interface": "en0",
   "mode": "targets|all",
-  'interval": 10,
+  "interval": 10,
   "mqtt": {
     "ip": "192.168.22.100",
     "port": 64888,
