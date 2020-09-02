@@ -7,7 +7,7 @@ Scans the interface for the specified MAC addresses and reports if they were fou
 ```json
 {
   "interface": "en0",
-  "mode": "targets" / "all",
+  "mode": "targets|all",
   'interval": 10,
   "mqtt": {
     "ip": "192.168.22.100",
